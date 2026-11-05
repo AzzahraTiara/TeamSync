@@ -1,0 +1,114 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+// role disimpan sebagai string: "dosen" | "mahasiswa"
+model User {
+  id           Int      @id @default(autoincrement())
+  nama         String
+  email        String   @unique
+  passwordHash String
+  role         String
+  createdAt    DateTime @default(now())
+
+  projectsDibuat  Project[]            @relation("DosenProject")
+  memberships     ProjectMember[]
+  surveys         Survey[]
+  ratingsDiterima ContributionRating[] @relation("RatingTarget")
+  issues          Issue[]
+  followUps       FollowUp[]
+}
+
+model Project {
+  id             Int      @id @default(autoincrement())
+  nama           String
+  deskripsi      String?  @db.NVarChar(Max)
+  dosenId        Int
+  periodeMulai   DateTime
+  periodeSelesai DateTime
+  intervalHari   Int      @default(7)
+  createdAt      DateTime @default(now())
+
+  dosen     User            @relation("DosenProject", fields: [dosenId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  members   ProjectMember[]
+  surveys   Survey[]
+  issues    Issue[]
+  followUps FollowUp[]
+}
+
+model ProjectMember {
+  id        Int @id @default(autoincrement())
+  projectId Int
+  userId    Int
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user    User    @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([projectId, userId])
+}
+
+model Survey {
+  id           Int      @id @default(autoincrement())
+  projectId    Int
+  userId       Int
+  periodeKe    Int
+  komunikasi   Int
+  keterbukaan  Int
+  koordinasi   Int
+  bantuan      Int
+  diskusi      Int
+  keseimbangan Int
+  komentar     String?  @db.NVarChar(Max)
+  createdAt    DateTime @default(now())
+
+  project Project              @relation(fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user    User                 @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ratings ContributionRating[]
+
+  @@unique([projectId, userId, periodeKe])
+}
+
+model ContributionRating {
+  id           Int @id @default(autoincrement())
+  surveyId     Int
+  targetUserId Int
+  skor         Int
+
+  survey Survey @relation(fields: [surveyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  target User   @relation("RatingTarget", fields: [targetUserId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([surveyId, targetUserId])
+}
+
+model Issue {
+  id               Int      @id @default(autoincrement())
+  projectId        Int
+  reporterId       Int
+  kategori         String
+  deskripsi        String   @db.NVarChar(Max)
+  dampak           String?  @db.NVarChar(Max)
+  masihBerlangsung Boolean  @default(true)
+  status           String   @default("Baru")
+  createdAt        DateTime @default(now())
+
+  project  Project @relation(fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  reporter User    @relation(fields: [reporterId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model FollowUp {
+  id             Int      @id @default(autoincrement())
+  projectId      Int
+  dosenId        Int
+  catatanDiskusi String   @db.NVarChar(Max)
+  tindakan       String   @db.NVarChar(Max)
+  status         String   @default("Direncanakan")
+  createdAt      DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  dosen   User    @relation(fields: [dosenId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
